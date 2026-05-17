@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -15,7 +17,7 @@ const db = mysql.createConnection({
 
   host: "localhost",
   user: "root",
-  password: "root2002",
+  password: process.env.DB_PASSWORD,
   database: "chatapp",
 
 });

@@ -7,7 +7,7 @@ const socket = io("http://localhost:3001");
 
 
 
-const SECRET_KEY = "secret123";
+const SECRET_KEY = process.env.SECRET_KEY;
 
 function App() {
 
