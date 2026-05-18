@@ -10,15 +10,17 @@ const CryptoJS = require("crypto-js");
 const app = express();
 
 app.use(cors());
+app.use(express.json());
 
-
+const SECRET_KEY = "secret123";
 
 const db = mysql.createConnection({
 
-  host: "localhost",
-  user: "root",
-  password: process.env.DB_PASSWORD,
-  database: "chatapp",
+  host: process.env.MYSQLHOST,
+  user: process.env.MYSQLUSER,
+  password: process.env.MYSQLPASSWORD,
+  database: process.env.MYSQLDATABASE,
+  port: process.env.MYSQLPORT,
 
 });
 
@@ -26,113 +28,102 @@ db.connect((err) => {
 
   if (err) {
 
-    console.log("MySQL Error:", err);
+    console.log("❌ MySQL Error:", err.message);
 
   } else {
 
-    console.log("MySQL Connected ✅");
+    console.log("✅ MySQL Connected");
 
   }
 
 });
 
-
-
 const server = http.createServer(app);
-
-
 
 const io = new Server(server, {
 
   cors: {
 
-    origin: "http://localhost:3000",
+    origin: "*",
     methods: ["GET", "POST"],
 
   },
 
 });
 
-
-
 io.on("connection", (socket) => {
 
-  console.log("User Connected:", socket.id);
-
-
+  console.log("🟢 User Connected:", socket.id);
 
   socket.on("send_message", (data) => {
 
-    console.log("Original Message:", data);
+    try {
 
+      if (!data || !data.text) return;
 
+      const encryptedText =
+        CryptoJS.AES.encrypt(
+          data.text,
+          SECRET_KEY
+        ).toString();
 
-    const encryptedText =
-      CryptoJS.AES.encrypt(
-        data.text,
-        "secret123"
-      ).toString();
+      const sql =
+        "INSERT INTO messages (username, ciphertext) VALUES (?, ?)";
 
-    console.log(
-      "Encrypted Message:",
-      encryptedText
-    );
+      db.query(
+        sql,
+        [data.username, encryptedText],
+        (err) => {
 
-    
+          if (err) {
 
-    const sql =
-      "INSERT INTO messages (username, ciphertext) VALUES (?, ?)";
+            console.log(
+              "❌ MYSQL ERROR:",
+              err.message
+            );
 
-    db.query(
+          } else {
 
-      sql,
+            console.log("💾 Message Saved");
 
-      [data.username, encryptedText],
-
-      (err, result) => {
-
-        if (err) {
-
-          console.log(
-            "MYSQL ERROR:",
-            err.sqlMessage
-          );
-
-        } else {
-
-          console.log(
-            "Encrypted Message Saved ✅"
-          );
+          }
 
         }
+      );
 
-      }
+      io.emit("receive_message", {
 
-    );
+        username: data.username,
+        text: encryptedText,
 
-    
+      });
 
-    io.emit(
-      "receive_message",
-      data
-    );
+    } catch (error) {
+
+      console.log(
+        "❌ Server Error:",
+        error.message
+      );
+
+    }
 
   });
 
-
-
   socket.on("disconnect", () => {
 
-    console.log("User Disconnected ❌");
+    console.log(
+      "🔴 User Disconnected:",
+      socket.id
+    );
 
   });
 
 });
 
-
-
 server.listen(3001, () => {
 
-  console.log("Server Running 🚀");
+  console.log(
+    "🚀 Server Running on port 3001"
+  );
 
 });

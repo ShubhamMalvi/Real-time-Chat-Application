@@ -5,9 +5,7 @@ import CryptoJS from "crypto-js";
 
 const socket = io("http://localhost:3001");
 
-
-
-const SECRET_KEY = process.env.SECRET_KEY;
+const SECRET_KEY = "secret123";
 
 function App() {
 
@@ -16,35 +14,46 @@ function App() {
 
   const chatEndRef = useRef(null);
 
-
   useEffect(() => {
 
     socket.off("receive_message");
 
     socket.on("receive_message", (data) => {
 
+      try {
 
-      const bytes = CryptoJS.AES.decrypt(
-        data.text,
-        SECRET_KEY
-      );
+        if (!data || !data.text) return;
 
-      const decryptedText =
-        bytes.toString(CryptoJS.enc.Utf8);
+        const bytes = CryptoJS.AES.decrypt(
+          data.text,
+          SECRET_KEY
+        );
 
-      const decryptedMessage = {
+        const decryptedText =
+          bytes.toString(CryptoJS.enc.Utf8) || data.text;
 
-        ...data,
-        text: decryptedText,
+        const decryptedMessage = {
 
-      };
+          ...data,
+          text: decryptedText,
 
-      setChat((prev) => [
+        };
 
-        ...prev,
-        decryptedMessage,
+        setChat((prev) => [
 
-      ]);
+          ...prev,
+          decryptedMessage,
+
+        ]);
+
+      } catch (error) {
+
+        console.log(
+          "❌ Decrypt Error:",
+          error.message
+        );
+
+      }
 
     });
 
@@ -56,8 +65,6 @@ function App() {
 
   }, []);
 
-
-
   useEffect(() => {
 
     chatEndRef.current?.scrollIntoView({
@@ -68,23 +75,14 @@ function App() {
 
   }, [chat]);
 
-
-
   const sendMessage = () => {
 
     if (message.trim() !== "") {
 
-
-      const encryptedMessage =
-        CryptoJS.AES.encrypt(
-          message,
-          SECRET_KEY
-        ).toString();
-
       const messageData = {
 
         username: socket.id,
-        text: encryptedMessage,
+        text: message,
 
       };
 
@@ -105,8 +103,6 @@ function App() {
 
       <div className="chat-card">
 
-      
-
         <div className="chat-header">
 
           <h1>Realtime Chat</h1>
@@ -114,8 +110,6 @@ function App() {
           <p>End-to-End Encrypted Chat</p>
 
         </div>
-
-        
 
         <div className="chat-body">
 
@@ -147,8 +141,6 @@ function App() {
           <div ref={chatEndRef}></div>
 
         </div>
-
-     
 
         <div className="chat-footer">
 
