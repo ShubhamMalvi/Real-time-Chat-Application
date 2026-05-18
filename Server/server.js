@@ -44,7 +44,7 @@ const io = new Server(server, {
 
   cors: {
 
-    origin: "*",
+    origin: "https://real-time-chat-application-ten-lovat.vercel.app",
     methods: ["GET", "POST"],
 
   },
