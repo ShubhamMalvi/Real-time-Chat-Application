@@ -3,7 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import CryptoJS from "crypto-js";
 
-const socket = io("http://localhost:3001");
+const socket = io(
+  "https://real-time-chat-application-3m3d.onrender.com"
+);
 
 const SECRET_KEY = "secret123";
 
