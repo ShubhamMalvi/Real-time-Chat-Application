@@ -14,6 +14,10 @@ app.use(express.json());
 
 const SECRET_KEY = "secret123";
 
+/* =========================
+   MYSQL CONNECTION
+========================= */
+
 const db = mysql.createConnection({
 
   host: process.env.MYSQLHOST,
@@ -21,6 +25,10 @@ const db = mysql.createConnection({
   password: process.env.MYSQLPASSWORD,
   database: process.env.MYSQLDATABASE,
   port: process.env.MYSQLPORT,
+
+  ssl: {
+    rejectUnauthorized: false,
+  },
 
 });
 
@@ -38,13 +46,23 @@ db.connect((err) => {
 
 });
 
+/* =========================
+   SERVER
+========================= */
+
 const server = http.createServer(app);
+
+/* =========================
+   SOCKET.IO
+========================= */
 
 const io = new Server(server, {
 
   cors: {
 
-    origin: "https://real-time-chat-application-ten-lovat.vercel.app",
+    origin:
+      "https://real-time-chat-application-ten-lovat.vercel.app",
+
     methods: ["GET", "POST"],
 
   },
@@ -55,11 +73,33 @@ io.on("connection", (socket) => {
 
   console.log("🟢 User Connected:", socket.id);
 
+  /* =========================
+     SEND MESSAGE
+  ========================= */
+
   socket.on("send_message", (data) => {
 
     try {
 
-      if (!data || !data.text) return;
+      console.log("📩 Incoming Data:", data);
+
+      if (!data || !data.text) {
+
+        console.log("❌ Empty Message");
+        return;
+
+      }
+
+      if (!SECRET_KEY) {
+
+        console.log("❌ SECRET_KEY Missing");
+        return;
+
+      }
+
+      /* =========================
+         ENCRYPT MESSAGE
+      ========================= */
 
       const encryptedText =
         CryptoJS.AES.encrypt(
@@ -67,13 +107,19 @@ io.on("connection", (socket) => {
           SECRET_KEY
         ).toString();
 
+      console.log("🔐 Encrypted:", encryptedText);
+
+      /* =========================
+         SAVE TO MYSQL
+      ========================= */
+
       const sql =
         "INSERT INTO messages (username, ciphertext) VALUES (?, ?)";
 
       db.query(
         sql,
         [data.username, encryptedText],
-        (err) => {
+        (err, result) => {
 
           if (err) {
 
@@ -85,11 +131,16 @@ io.on("connection", (socket) => {
           } else {
 
             console.log("💾 Message Saved");
+            console.log(result);
 
           }
 
         }
       );
+
+      /* =========================
+         SEND TO ALL USERS
+      ========================= */
 
       io.emit("receive_message", {
 
@@ -101,13 +152,17 @@ io.on("connection", (socket) => {
     } catch (error) {
 
       console.log(
-        "❌ Server Error:",
+        "❌ SERVER ERROR:",
         error.message
       );
 
     }
 
   });
+
+  /* =========================
+     DISCONNECT
+  ========================= */
 
   socket.on("disconnect", () => {
 
@@ -120,10 +175,16 @@ io.on("connection", (socket) => {
 
 });
 
-server.listen(3001, () => {
+/* =========================
+   START SERVER
+========================= */
+
+const PORT = process.env.PORT || 3001;
+
+server.listen(PORT, () => {
 
   console.log(
-    "🚀 Server Running on port 3001"
+    `🚀 Server Running on port ${PORT}`
   );
 
 });
